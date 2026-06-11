@@ -1,4 +1,4 @@
-📁 **Full source code:** [midnight-apps/shielded-token](https://github.com/0xfdbu/midnight-apps/tree/main/shielded-token)
+📁 **Full source code:** [midnight-apps/shielded-token](https://github.com/0xfdbu/midnight-shielded-token)
 
 **Target audience:** Developers
 
@@ -13,7 +13,7 @@ Shielded tokens differ from unshielded tokens in that all balances and amounts r
 - Node.js installed (v20+)
 - A Midnight Wallet (1AM or Lace)
 - Some Preprod [faucet](https://faucet.preprod.midnight.network/) NIGHT tokens
-- A [`package.json`](https://github.com/0xfdbu/midnight-apps/blob/main/shielded-token/package.json) with the needed packages
+- A [`package.json`](https://github.com/0xfdbu/midnight-shielded-token/blob/main/package.json) with the needed packages
   - `@midnight-ntwrk/compact-runtime`
   - `@midnight-ntwrk/dapp-connector-api`
   - `@midnight-ntwrk/ledger-v8`
@@ -209,7 +209,7 @@ export circuit nextNonce(index: Uint<128>, currentNonce: Bytes<32>): Bytes<32> {
 
 `evolveNonce` is used to derive the next nonce from a counter index and current nonce; it's useful for applications requiring deterministic nonce sequences.
 
-View the full contract in [`Token.compact`](https://github.com/0xfdbu/midnight-apps/blob/main/shielded-token/contracts/Token.compact).
+View the full contract in [`Token.compact`](https://github.com/0xfdbu/midnight-shielded-token/blob/main/contracts/Token.compact).
 
 ### Compiling the compact smart contract
 
@@ -326,18 +326,18 @@ connect: async (networkId = NETWORK_ID) => {
 },
 ```
 
-Or if you want, you can use a starter I built, [dapp-connect](https://github.com/0xfdbu/midnight-apps/tree/main/dapp-connect).
+Or if you want, you can use a starter I built, [dapp-connect](https://github.com/0xfdbu/midnight-dapp-connect).
 
 First, start by cloning the repository.
 
 ```shell
-git clone https://github.com/0xfdbu/midnight-apps.git
+git clone https://github.com/0xfdbu/midnight-dapp-connect.git
 ```
 
 Run the starter and install dependencies.
 
 ```shell
-cd midnight-apps/dapp-connect
+cd midnight-dapp-connect
 npm install
 npm run dev
 ```
@@ -501,7 +501,7 @@ import { deployTokenContract } from '../hooks/wallet/services/api';
 
 The smart contract address is then saved to `localStorage`.
 
-> **Note:** The same API pattern used in `deployTokenContract` will be used for calling the compiled circuits. View full API [api.ts](https://github.com/0xfdbu/midnight-apps/blob/main/shielded-token/src/hooks/wallet/services/api.ts)
+> **Note:** The same API pattern used in `deployTokenContract` will be used for calling the compiled circuits. View full API [api.ts](https://github.com/0xfdbu/midnight-shielded-token/blob/main/src/hooks/wallet/services/api.ts)
 
 ### Minting tokens
 
@@ -724,7 +724,7 @@ It is important to distinguish between `sendImmediateShielded` (bypasses Merkle 
 
 ## Next steps
 
-- Check the full repository [source code on GitHub](https://github.com/0xfdbu/midnight-apps/tree/main/shielded-token)
+- Check the full repository [source code on GitHub](https://github.com/0xfdbu/midnight-shielded-token)
 - Read the Midnight Compact language docs
 - Experiment with `transferShielded` by storing `mt_index` for committed coins
 - Add admin authentication to restrict minting privileges
