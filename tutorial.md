@@ -1,4 +1,4 @@
-📁 **Full source code:** [midnight-apps/shielded-token](https://github.com/0xfdbu/midnight-shielded-token)
+📁 **Full source code:** [midnight-shielded-token](https://github.com/0xfdbu/midnight-shielded-token)
 
 **Target audience:** Developers
 
