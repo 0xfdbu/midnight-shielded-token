@@ -1,0 +1,126 @@
+import type { ConnectedAPI } from '@midnight-ntwrk/dapp-connector-api';
+import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
+import { INDEXER_HTTP, INDEXER_WS, CONTRACT_PATH, PRIVATE_STATE_PASSWORD } from '../wallet.constants';
+import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
+import type { ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
+import { dappConnectorProofProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
+import { toHex, fromHex } from '@midnight-ntwrk/midnight-js-utils';
+import { Transaction, CostModel } from '@midnight-ntwrk/ledger-v8';
+
+export async function buildProviders(
+  connectedApi: ConnectedAPI,
+  coinPublicKey: string,
+  encryptionPublicKey: string,
+  contractAddress?: string,
+  existingPrivateStateProvider?: any
+): Promise<MidnightProviders> {
+  const fetchProvider = new FetchZkConfigProvider(
+    `${window.location.origin}${CONTRACT_PATH}`,
+    fetch.bind(window)
+  );
+  const zkConfigProvider = new ArtifactValidatingProvider(fetchProvider);
+
+  const privateStateProvider = existingPrivateStateProvider || levelPrivateStateProvider({
+    accountId: coinPublicKey,
+    privateStoragePasswordProvider: () => PRIVATE_STATE_PASSWORD,
+  });
+
+  if (contractAddress) {
+    privateStateProvider.setContractAddress(contractAddress);
+  }
+
+  return {
+    privateStateProvider,
+    publicDataProvider: indexerPublicDataProvider(INDEXER_HTTP, INDEXER_WS),
+    zkConfigProvider,
+    proofProvider: await dappConnectorProofProvider(connectedApi, zkConfigProvider, CostModel.initialCostModel()),
+    walletProvider: {
+      getCoinPublicKey: () => coinPublicKey,
+      getEncryptionPublicKey: () => encryptionPublicKey,
+      async balanceTx(tx: any, _ttl?: Date): Promise<any> {
+        const serializedTx = toHex(tx.serialize());
+        const received = await connectedApi.balanceUnsealedTransaction(serializedTx);
+        return Transaction.deserialize('signature', 'proof', 'binding', fromHex(received.tx));
+      },
+    },
+    midnightProvider: {
+      async submitTx(tx: any): Promise<string> {
+        await connectedApi.submitTransaction(toHex(tx.serialize()));
+        const txIdentifiers = (tx as any).identifiers();
+        return txIdentifiers?.[0] ?? '';
+      },
+    },
+  };
+}
+
+/**
+ * Wrapper around FetchZkConfigProvider that detects Vite SPA fallback HTML
+ * and throws for missing artifacts. This prevents garbage HTML from being
+ * sent to the proof server as "ZK artifact data."
+ *
+ * When a built-in ledger circuit like "output" is requested, the base provider
+ * would otherwise receive index.html (HTTP 200) and pass it through. This
+ * wrapper throws instead, letting the caller (wallet or proof server) fall
+ * back to its own internal artifact store.
+ */
+class ArtifactValidatingProvider implements ZKConfigProvider<string> {
+  #base: ZKConfigProvider<string>;
+
+  constructor(base: ZKConfigProvider<string>) {
+    this.#base = base;
+  }
+
+  async getProverKey(circuitId: string) {
+    console.log('[ArtifactValidatingProvider] getProverKey', circuitId);
+    const key = await this.#base.getProverKey(circuitId);
+    this.validate(key as Uint8Array, `${circuitId}.prover`);
+    return key;
+  }
+
+  async getVerifierKey(circuitId: string) {
+    console.log('[ArtifactValidatingProvider] getVerifierKey', circuitId);
+    const key = await this.#base.getVerifierKey(circuitId);
+    this.validate(key as Uint8Array, `${circuitId}.verifier`);
+    return key;
+  }
+
+  async getZKIR(circuitId: string) {
+    console.log('[ArtifactValidatingProvider] getZKIR', circuitId);
+    const zkir = await this.#base.getZKIR(circuitId);
+    this.validate(zkir as Uint8Array, `${circuitId}.bzkir`);
+    return zkir;
+  }
+
+  getVerifierKeys(circuitIds: string[]) {
+    return this.#base.getVerifierKeys(circuitIds);
+  }
+
+  async get(circuitId: string) {
+    console.log('[ArtifactValidatingProvider] get', circuitId);
+    const config = await this.#base.get(circuitId);
+    this.validate(config.zkir as Uint8Array, `${circuitId}.bzkir`);
+    this.validate(config.proverKey as Uint8Array, `${circuitId}.prover`);
+    this.validate(config.verifierKey as Uint8Array, `${circuitId}.verifier`);
+    return config;
+  }
+
+  asKeyMaterialProvider() {
+    return this;
+  }
+
+  private validate(data: Uint8Array, name: string) {
+    if (data && data.length > 0) {
+      const sampleSize = Math.min(data.length, 200);
+      const start = new TextDecoder().decode(data.slice(0, sampleSize)).toLowerCase();
+      if (start.includes('<!doctype') || start.includes('<html')) {
+        throw new Error(
+          `Artifact ${name} is HTML (file missing or Vite SPA fallback). ` +
+          `Built-in ledger circuits like "output" are not generated by compactc. ` +
+          `Ensure the artifact exists or use a provider that has built-in artifacts.`
+        );
+      }
+    }
+  }
+}
