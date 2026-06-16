@@ -666,7 +666,7 @@ const shieldedBalanceTotal = (() => {
 })();
 ```
 
-**Contract states** like `totalSupply` and `totalBurned` are fetched via the `getContractState` helper, which uses `ledger()` to deserialize the raw bytes into readable data.
+**Smart contract states** like `totalSupply` and `totalBurned` are fetched via the `getContractState` helper, which uses `ledger()` to deserialise the raw bytes into readable data.
 
 ```typescript
 const [stats, setStats] = useState<{ totalSupply: bigint; totalBurned: bigint } | null>(null);
